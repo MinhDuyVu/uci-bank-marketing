@@ -1,0 +1,8 @@
+data = read.csv("data/bank-additional-full.csv")
+
+constant_cols <- sapply(bank, function(col) length(unique(col)))
+
+cat(constant_cols)
+
+unique(data$default)
+table(data$default)

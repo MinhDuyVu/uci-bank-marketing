@@ -1,0 +1,130 @@
+############################################################
+# STEP 3.4 – Data Sampling & Validation Strategy (smotefamily)
+# Author: [Your Name]
+# INF30036 – Business Analytics and AI Assignment 3
+############################################################
+
+library(tidyverse)
+library(caret)
+library(smotefamily)
+library(pROC)
+
+# ==========================================================
+# 1. Load Prepared Datasets (from Step 3.3)
+# ==========================================================
+train <- read.csv("data/train_prepared.csv")
+val   <- read.csv("data/validation_prepared.csv")
+test  <- read.csv("data/test_prepared.csv")
+
+cat("\nOriginal class distribution (train):\n")
+print(table(train$y))
+cat("Positive rate:", round(mean(train$y == 1) * 100, 2), "%\n")
+
+# Re-check missing values
+check_missing_vals <- function(data) {
+  # Re-check missing values
+  na_summary <- colSums(is.na(data))
+  na_present <- na_summary[na_summary > 0]
+  if (length(na_present) > 0) {
+    cat("Columns with missing values detected:\n")
+    print(na_present)
+    cat("Recommendation: impute or remove these records before modeling.\n\n")
+  } else {
+    cat("No missing values detected.\n\n")
+  }
+}
+check_missing_vals(train)
+check_missing_vals(val)
+check_missing_vals(test)
+
+# ==========================================================
+# 2. Apply SMOTE to Training Set Only
+# ==========================================================
+# Convert to numeric matrix for KNN distance calculations
+set.seed(123)
+X <- train %>%
+  select(-y) %>%
+  mutate_if(is.factor, as.numeric) %>%
+  mutate_if(is.character, as.numeric)
+y <- as.factor(train$y)
+
+# Perform SMOTE (creates synthetic minority samples)
+smote_out <- SMOTE(X = X, target = y, K = 5, dup_size = 3)
+train_smote <- smote_out$data
+train_smote$y <- as.factor(smote_out$class)
+
+cat("\nClass distribution after SMOTE:\n")
+print(table(train_smote$y))
+
+# ==========================================================
+# 3. Stratified Cross-Validation Setup
+# ==========================================================
+set.seed(123)
+cv_ctrl <- trainControl(
+  method = "cv",
+  number = 5,
+  summaryFunction = twoClassSummary,
+  classProbs = TRUE,
+  savePredictions = TRUE
+)
+
+# ==========================================================
+# 4. Train Logistic Regression (Baseline Model)
+# ==========================================================
+train_smote$y <- factor(ifelse(train_smote$y == 1, "yes", "no"),
+                        levels = c("no", "yes"))
+
+set.seed(123)
+model_logit <- train(
+  y ~ .,
+  data = train_smote,
+  method = "glm",
+  family = "binomial",
+  metric = "ROC",
+  trControl = cv_ctrl
+)
+
+cat("\nCross-validated AUC (mean):",
+    round(mean(model_logit$resample$ROC), 3), "\n")
+
+# ==========================================================
+# 5. Evaluate on Validation Set
+# ==========================================================
+val$y <- factor(ifelse(val$y == 1, "yes", "no"), levels = c("no", "yes"))
+pred_val_prob <- predict(model_logit, val, type = "prob")[, "yes"]
+pred_val <- ifelse(pred_val_prob > 0.5, "yes", "no")
+
+cm <- confusionMatrix(
+  factor(pred_val, levels = c("no", "yes")),
+  val$y,
+  positive = "yes"
+)
+print(cm)
+
+auc_val <- roc(response = val$y, predictor = pred_val_prob)$auc
+cat("\nValidation AUC:", round(auc_val, 3), "\n")
+
+# ==========================================================
+# 6. Business Cost Interpretation
+# ==========================================================
+# Hypothetical marketing cost structure
+FP_cost <- 5    # cost of calling an uninterested client
+FN_loss <- 100  # lost profit from missing an interested client
+
+FP <- cm$table["yes", "no"]
+FN <- cm$table["no", "yes"]
+expected_loss <- FP_cost * FP + FN_loss * FN
+
+cat("\nEstimated business loss (illustrative): $", expected_loss, "\n")
+
+# ==========================================================
+# 7. Report Key Metrics
+# ==========================================================
+cat("\nPerformance Metrics:\n")
+cat("Accuracy :", round(cm$overall['Accuracy'], 3), "\n")
+cat("Precision:", round(cm$byClass['Precision'], 3), "\n")
+cat("Recall   :", round(cm$byClass['Recall'], 3), "\n")
+cat("F1 Score :", round(cm$byClass['F1'], 3), "\n")
+cat("AUC      :", round(auc_val, 3), "\n")
+
+cat("\nStep 3.4 completed successfully — SMOTE applied and validation ready.\n")
