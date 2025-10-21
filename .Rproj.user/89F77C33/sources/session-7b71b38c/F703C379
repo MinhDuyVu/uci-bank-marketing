@@ -1,9 +1,9 @@
 {
     "id": "F703C379",
-    "path": "D:/minhd/Documents/Projects/university/uci-bank-marketing/test.R",
-    "project_path": "test.R",
+    "path": "D:/minhd/Documents/Projects/university/uci-bank-marketing/logistic_reg_prepared.R",
+    "project_path": "logistic_reg_prepared.R",
     "type": "r_source",
-    "hash": "0",
+    "hash": "648207219",
     "contents": "",
     "dirty": false,
     "created": 1761052435673.0,
@@ -12,15 +12,15 @@
     "properties": {
         "source_window_id": "",
         "Source": "Source",
-        "cursorPosition": "41,38",
-        "scrollLine": "15"
+        "cursorPosition": "36,36",
+        "scrollLine": "19"
     },
     "folds": "",
-    "lastKnownWriteTime": 1761062485,
+    "lastKnownWriteTime": 1761063728,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1761062485811,
+    "last_content_update": 1761063728,
     "read_only": false,
     "read_only_alternatives": []
 }
